@@ -69,6 +69,7 @@ class App extends Component {
     // вызов функции из файла который прописывает логику настроек Api (gallery-api.js)
     galleryApi
       .fetchImages(options)
+
       .then(({ hits, totalHits }) => {
         // console.log(hits);
         // console.log(totalHits);
