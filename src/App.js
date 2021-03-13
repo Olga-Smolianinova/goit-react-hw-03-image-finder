@@ -1,94 +1,142 @@
 import React, { Component } from 'react';
 
-import shortId from 'shortid'; //npm для создания уникальных ID
-
 // Components
-import ContactsForm from './components/ContactsForm';
+import Searchbar from './components/Searchbar';
 
-import Filter from './components/Filter';
+import ImageGallery from './components/ImageGallery';
 
-import ContactList from './components/ContactList';
+import Loader from './components/Loader';
 
-// Data
-import initialContacts from './components/ContactList/initialContacts.json'; //data for ContactList
+import Button from './components/Button';
+
+// API
+import galleryApi from './api/gallery-api';
 
 class App extends Component {
   state = {
-    contacts: initialContacts,
-    filter: '',
+    gallery: [],
+    currentPage: 1, //чтобы при нажатии на Load more могли увеличивать currentPage, и отрисовать следующую часть запроса
+    perPage: 12,
+
+    searchQuery: 'spring', //чтобы между разными запросами могли сохранить query, по которому делаем запрос и он же отрисовывался дальше при нажатии на  Load more
+    isLoading: false, //спиннер, состояние загрузки
+    error: null, //для catch
   };
 
-  // чтобы при отравке (submit) формы получить доступ к state из ContactForm.js. Это можно сделать через props. В параметрах деструктуризуруем ключи name,number из state
-
-  // во время submit ContactForm нужно получить из нее данные, чтобы добавить  еще один contacts с ее данными. Передаем этом метод с помощью prop для ContactsForm
-  addContact = ({ name, number }) => {
-    // console.log(name);
-    // console.log(number);
-
-    //проверка на возможность добавлять контакты, имена которых уже есть в телефонной книге. При попытке выполнить такое действие выводим alert с предупреждением.
-    // console.log(this.state.contacts.id);
-    // console.log(name);
-    if (this.state.contacts.some(elm => elm.name === name)) {
-      console.log(alert(`${name} is already in contacts`));
-      return;
+  // ЖИЗНЕННЫЕ ЦИКЛЫ
+  componentDidMount() {
+    this.fetchImages();
+  }
+  componentDidUpdate(prevProps, prevState) {
+    // console.log('update');
+    //  добавляем условие, что если компонент обновился и обновилось именно свойство searchQuery ({ searchQuery: query }) тогда в этом случае делаем http-запрос. (если этого не сделать http-запрос делается с пустой сторокой (searchQuery: '') и не возвращает результат)
+    if (prevState.searchQuery !== this.state.searchQuery) {
+      this.fetchImages();
     }
-    // создаем contact, и добавляем его в state
-    const contact = {
-      id: shortId.generate(), //присваиваем уникальный ID
-      name,
-      number,
-    };
+  }
 
-    // для обновления state, когда мы хотим в него что-либо добавить, сначала делаем новый массив, в который распыляем старый, и добавляем новый элемент в начало или конец массива [...старый[], элемент]
-    this.setState(({ contacts }) => ({
-      contacts: [contact, ...contacts],
-    }));
-  };
+  // МЕТОДЫ
+  // метод, который будет отрабатываться при submit формы, когда будет изменяться query
+  changeQuery = query => {
+    // console.log(query);
 
-  // для фильтрации. для передачи данныx при onChange
-  changeFilter = event => {
+    // 1)  чтобы при нажатии на  Load more продолжался делаться запрос по предыдущему query
+    // 2)  чтобы изменить термин поиска, когда при вводе нового query в input - currentPage снова начинал отрисовываться с 1-й страницы, а не продалжал увеличиваться +1
+    //   3) articles при новом запросе перед начало обнулялся от предыдущих статей
+    //   4) при каждом следующем запросе обнуляем error
     this.setState({
-      filter: event.currentTarget.value,
+      searchQuery: query,
+      currentPage: 1,
+      gallery: [],
+
+      totalHits: null,
+      error: null, //для catch
     });
   };
 
-  // вычисляемые свойства для фильтрации. Отфильтровываем те contacts, которые includes то, что мы записали в input Фильтр по имени и в ContactList рендерим не все <ContactList
-  //   contacts={contacts}, а только отфильтрованые, т.е.  contacts={filteredContacts}/>
-  getFilteredContacts = () => {
-    // для чистоты кода выведем this.state.filter.toLowerCase() в отдельную переменную
-    const normalizedFilter = this.state.filter.toLowerCase();
+  //выносим http-запрос в отдельный метод для удобства переиспользования
+  fetchImages = () => {
+    const { searchQuery, currentPage, perPage } = this.state;
 
-    return this.state.contacts.filter(contact =>
-      contact.name.toLowerCase().includes(normalizedFilter),
-    );
-  };
+    //   выводим в отдельную переменную  searchQuery, currentPage для того, чтобы передать options в props в gallery-api.js;
+    const options = { searchQuery, currentPage, perPage };
 
-  // для удаления элемента в ContactList при onClick на кнопку. Обращаемся к id элемента.
-  deleteContact = contactId => {
-    this.setState(({ contacts }) => ({
-      contacts: contacts.filter(contact => contact.id !== contactId), //берем предыдущий contacts и отфильтровываем все элементы, кроме того у которого id совпадает
-    }));
+    //   сотояние загрузки, меняем значение
+    this.setState({ isLoading: true });
+
+    //   по результатам того  query, который пользователь ввел в input делаем http-запрос
+
+    // вызов функции из файла который прописывает логику настроек Api (gallery-api.js)
+    galleryApi
+      .fetchImages(options)
+      .then(({ hits, totalHits }) => {
+        // console.log(hits);
+        // console.log(totalHits);
+
+        // условие, если массив данных не пустой
+        if (hits.length === 0) {
+          new Error('Error fetching data');
+        }
+
+        this.setState(prevState => ({
+          gallery: [...prevState.gallery, ...hits],
+          totalHits,
+
+          // при нажатии на Load more увеличиваем currentPage, отрисовываем следующую часть запроса
+          currentPage: prevState.currentPage + 1,
+        }));
+
+        // Для плавной прокрутки
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: 'smooth',
+        });
+      })
+      .catch(error => this.setState({ error }))
+      // убираем отображение спиннера, когда загрузились данные
+      .finally(() => this.setState({ isLoading: false }));
   };
 
   render() {
-    const filteredContacts = this.getFilteredContacts();
+    const {
+      gallery,
+      currentPage,
+      perPage,
+      isLoading,
+      totalHits,
+      error,
+    } = this.state;
+
+    //   должен ли отображаться Load more и спиннер, если закончились images
+    const shouldRenderLoadMoreButton = gallery.length > 0 && !isLoading;
+
+    const hideLoadMoreButton = totalHits > (currentPage - 1) * perPage;
+    // console.log('perPage:', perPage);
+    // console.log('currentPage:', currentPage);
 
     return (
       <div className="App">
-        <h1>Phonebook</h1>
-        {/* ContactsForm чтобы при отравке (submit) формы получить доступ к state из Form.js добавляем prop onSubmit методом для этого */}
+        {/* Searchbar. В props передаем метод, который будет отрабатываться при submit формы */}
+        <Searchbar onSubmit={this.changeQuery} />
+        {/* ImageGallery */}
+        <ImageGallery gallery={gallery} />
 
-        <ContactsForm onSubmit={this.addContact} />
+        {/* Loader {/* появление спиннера, рендерим по условию  */}
+        {isLoading && <Loader />}
 
-        <h2>Contacts</h2>
-        {/* Filter */}
-        <Filter value={this.state.filter} onChange={this.changeFilter} />
+        {/* Button Load more. Рендер по условию */}
+        {shouldRenderLoadMoreButton && hideLoadMoreButton && (
+          <Button onClick={this.fetchImages}>
+            <Loader />
+          </Button>
+        )}
 
-        {/* ContactList */}
-        <ContactList
-          contacts={filteredContacts}
-          onDeleteContact={this.deleteContact}
-        />
+        {/* для обработки ошибок (error), рендер по условию */}
+        {error && (
+          <h2 className="ErrorMessage">
+            Something get wrong! Please, try again!
+          </h2>
+        )}
       </div>
     );
   }
