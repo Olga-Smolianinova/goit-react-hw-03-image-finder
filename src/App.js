@@ -76,7 +76,7 @@ class App extends Component {
 
         // условие, если массив данных не пустой
         if (hits.length === 0) {
-          new Error('Error fetching data');
+          throw new Error('Error fetching data');
         }
 
         this.setState(prevState => ({
