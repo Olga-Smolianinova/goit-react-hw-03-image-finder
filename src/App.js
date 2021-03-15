@@ -18,15 +18,16 @@ class App extends Component {
     currentPage: 1, //чтобы при нажатии на Load more могли увеличивать currentPage, и отрисовать следующую часть запроса
     perPage: 12,
 
-    searchQuery: 'spring', //чтобы между разными запросами могли сохранить query, по которому делаем запрос и он же отрисовывался дальше при нажатии на  Load more
+    searchQuery: '', //чтобы между разными запросами могли сохранить query, по которому делаем запрос и он же отрисовывался дальше при нажатии на  Load more
     isLoading: false, //спиннер, состояние загрузки
     error: null, //для catch
   };
 
   // ЖИЗНЕННЫЕ ЦИКЛЫ
-  componentDidMount() {
-    this.fetchImages();
-  }
+  // componentDidMount() {
+  //   this.fetchImages();
+  // }
+
   componentDidUpdate(prevProps, prevState) {
     // console.log('update');
     //  добавляем условие, что если компонент обновился и обновилось именно свойство searchQuery ({ searchQuery: query }) тогда в этом случае делаем http-запрос. (если этого не сделать http-запрос делается с пустой сторокой (searchQuery: '') и не возвращает результат)
@@ -49,17 +50,16 @@ class App extends Component {
       currentPage: 1,
       gallery: [],
 
-      totalHits: null,
       error: null, //для catch
     });
   };
 
   //выносим http-запрос в отдельный метод для удобства переиспользования
   fetchImages = () => {
-    const { searchQuery, currentPage, perPage } = this.state;
+    const { searchQuery, currentPage, perPage, error } = this.state;
 
     //   выводим в отдельную переменную  searchQuery, currentPage для того, чтобы передать options в props в gallery-api.js;
-    const options = { searchQuery, currentPage, perPage };
+    const options = { searchQuery, currentPage, perPage, error };
 
     //   сотояние загрузки, меняем значение
     this.setState({ isLoading: true });
@@ -76,7 +76,7 @@ class App extends Component {
 
         // условие, если массив данных не пустой
         if (hits.length === 0) {
-          throw new Error('Error fetching data');
+          throw new Error('No matches were found! Try again!');
         }
 
         this.setState(prevState => ({
@@ -132,12 +132,8 @@ class App extends Component {
           </Button>
         )}
 
-        {/* для обработки ошибок (error), рендер по условию */}
-        {error && (
-          <h2 className="ErrorMessage">
-            Something get wrong! Please, try again!
-          </h2>
-        )}
+        {/* для обработки ошибок (error), рендер по условию. error.message = 'No matches were found! Try again!' */}
+        {error && <h2 className="ErrorMessage">{error.message}</h2>}
       </div>
     );
   }
