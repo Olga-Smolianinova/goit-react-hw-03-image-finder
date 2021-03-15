@@ -64,6 +64,10 @@ class App extends Component {
     //   сотояние загрузки, меняем значение
     this.setState({ isLoading: true });
 
+    //проверка на то, если пользователь ничего не ввел в input, не отправлять http-запрос
+    if (!searchQuery) {
+      return;
+    }
     //   по результатам того  query, который пользователь ввел в input делаем http-запрос
 
     // вызов функции из файла который прописывает логику настроек Api (gallery-api.js)
