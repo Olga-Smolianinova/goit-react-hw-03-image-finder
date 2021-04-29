@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState } from 'react';
 
 import PropTypes from 'prop-types';
 
@@ -9,63 +9,54 @@ import Modal from '../Modal';
 
 import './ImageGallery.css';
 
-class ImageGallery extends Component {
-  state = {
-    showModal: false, // для Модального окна
-    largeSrc: '',
-    imgAlt: '',
-  };
-  // Методы
+export default function ImageGallery({ gallery }) {
+  // useState
+  const [showModal, setShowModal] = useState(false);
+  const [largeSrc, setLargeSrc] = useState('');
+  const [imgAlt, setImgAlt] = useState('');
+
+  // Function
   // работа Модального окна. Открытие-закрытие в зависимости от предыдущего значения
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
+  const toggleModal = () => {
+    setShowModal(prevShowModal => !prevShowModal);
   };
 
   // открытие модального окна при клике на изображение
-  onImgClick = (largeSrc, imgAlt) => {
+  const onImgClick = (largeSrc, imgAlt) => {
     // console.log(largeSrc);
     // console.log(imgAlt);
 
-    this.toggleModal();
+    toggleModal();
 
-    this.setState({ largeSrc, imgAlt });
+    setLargeSrc(largeSrc);
+    setImgAlt(imgAlt);
   };
 
-  render() {
-    const { gallery } = this.props;
+  return (
+    <>
+      <ul className="ImageGallery">
+        {/* Набор <li> с изображениями */}
+        {gallery.map(({ id, webformatURL, largeImageURL, tags }) => (
+          <ImageGalleryItem
+            key={id}
+            imgSrc={webformatURL}
+            imgAlt={tags}
+            largeSrc={largeImageURL}
+            onImgClick={onImgClick}
+          />
+        ))}
+      </ul>
 
-    const { showModal, largeSrc, imgAlt } = this.state;
-
-    return (
-      <>
-        <ul className="ImageGallery">
-          {/* Набор <li> с изображениями */}
-          {gallery.map(({ id, webformatURL, largeImageURL, tags }) => (
-            <ImageGalleryItem
-              key={id}
-              imgSrc={webformatURL}
-              imgAlt={tags}
-              largeSrc={largeImageURL}
-              onImgClick={this.onImgClick}
-            />
-          ))}
-        </ul>
-
-        {/* Modal window. Открытие по условию*/}
-        {showModal && (
-          <Modal onClose={this.toggleModal}>
-            <img src={largeSrc} alt={imgAlt} />
-          </Modal>
-        )}
-      </>
-    );
-  }
+      {/* Modal window. Открытие по условию*/}
+      {showModal && (
+        <Modal onClose={toggleModal}>
+          <img src={largeSrc} alt={imgAlt} />
+        </Modal>
+      )}
+    </>
+  );
 }
 
 ImageGallery.propTypes = {
   gallery: PropTypes.arrayOf(PropTypes.object).isRequired,
 };
-
-export default ImageGallery;
